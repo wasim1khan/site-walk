@@ -12,52 +12,910 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
-  /* ============================================================
-     PASTE YOUR APPS SCRIPT LINK (ends with /exec) IN APP_URL BELOW
-     ============================================================ */
-  html, body { margin: 0; height: 100%; background: #003A70; overflow: hidden; }
-  body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
-  #app { position: fixed; inset: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0; width: 100%; height: calc(100% - env(safe-area-inset-top) - env(safe-area-inset-bottom)); border: 0; background: #F2F5F9; }
-  #splash { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 16px; background: #FFFFFF; color: #0B2A5B; font: 600 16px/1.4 "Segoe UI", system-ui, sans-serif; text-align: center; padding: 24px; z-index: 2; transition: opacity .3s; }
-  #splash img { width: 220px; height: 220px; }
-  #splash .bar { width: 140px; height: 4px; border-radius: 4px; background: #E6ECF3; overflow: hidden; }
-  #splash .bar i { display: block; width: 40%; height: 100%; background: #C8A87A; border-radius: 4px; animation: slide 1.1s ease-in-out infinite; }
-  #splash small { color: #5A6A80; font-weight: 400; max-width: 34ch; }
-  #splash.gone { opacity: 0; pointer-events: none; }
-  @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
-  @media (prefers-reduced-motion: reduce) { #splash .bar i { animation: none; width: 100%; } }
+
+/* Layout: navy app bar, one working column; summary tiles first, then the site checklist and the entries. Imdaad navy + sand gold. */
+:root{
+  --bg:#F2F5F9;
+  --surface:#FFFFFF;
+  --ink:#0E2340;
+  --muted:#5A6A80;
+  --line:#DBE2EC;
+  --navy:#003A70;
+  --gold:#C8A87A;
+  --gold-ink:#7A5A2B;
+  --primary:#003A70;
+  --on-primary:#FFFFFF;
+  --soft:#E6ECF3;
+  --good:#1D7F55;
+  --good-bg:#E3F3EA;
+  --bad:#B4380F;
+  --bad-bg:#FBE9E1;
+  --wait:#5A6A80;
+  --wait-bg:#EDF0F5;
+  --bar:#003A70;
+  --font-display:"Red Hat Display", "Segoe UI", system-ui, sans-serif;
+  --font-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono:"IBM Plex Mono", ui-monospace, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#071427; --surface:#0E2140; --ink:#E7EDF6; --muted:#97A7BE; --line:#20375A;
+    --navy:#6E9BD6; --gold:#D4B68A; --gold-ink:#E2C79E; --primary:#D4B68A; --on-primary:#071427;
+    --soft:#14294A; --good:#5BC793; --good-bg:#10332A; --bad:#F08A64; --bad-bg:#3A1D14;
+    --wait:#97A7BE; --wait-bg:#172B4A; --bar:#04101F; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#071427; --surface:#0E2140; --ink:#E7EDF6; --muted:#97A7BE; --line:#20375A;
+  --navy:#6E9BD6; --gold:#D4B68A; --gold-ink:#E2C79E; --primary:#D4B68A; --on-primary:#071427;
+  --soft:#14294A; --good:#5BC793; --good-bg:#10332A; --bad:#F08A64; --bad-bg:#3A1D14;
+  --wait:#97A7BE; --wait-bg:#172B4A; --bar:#04101F; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--font-body);}
+h1,h2,h3{font-family:var(--font-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:20px}
+h3{font-size:16px}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+img{max-width:100%}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--font-mono);font-size:13px}
+
+/* App bar */
+.bar{background:var(--bar);color:#fff;border-bottom:3px solid var(--gold);}
+.bar-in{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#fff;cursor:pointer;background:none;border:0;padding:0}
+.brand img{width:42px;height:42px;flex:none;display:block}
+.brand b{font-family:var(--font-display);font-weight:800;font-size:19px;letter-spacing:.01em;display:block;line-height:1.1}
+.brand small{display:block;color:#C8D4E4;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.bar .spacer{flex:1}
+.role-chip{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 12px;font-size:13px;color:#fff;background:transparent;cursor:pointer}
+.role-chip:hover{background:rgba(255,255,255,.1)}
+
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;display:grid;gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px}
+.card-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.card-head .spacer{flex:1}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);padding:9px 14px;font-weight:600;cursor:pointer;min-height:40px}
+.btn:hover{border-color:var(--navy)}
+.btn.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.gold{background:var(--gold);color:#1C1406;border-color:var(--gold)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.sm{min-height:32px;padding:5px 10px;font-size:13px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px}
+
+/* Forms */
+label.f{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+.inp{width:100%;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:9px 11px;min-height:40px;color:var(--ink)}
+textarea.inp{min-height:76px;resize:vertical}
+.inp:focus{border-color:var(--navy);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--navy) 22%,transparent)}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.seg button{border:2px solid var(--line);border-radius:10px;background:var(--surface);padding:12px;font-weight:600;cursor:pointer;text-align:left}
+.seg button[aria-pressed="true"].ok{border-color:var(--good);background:var(--good-bg);color:var(--good)}
+.seg button[aria-pressed="true"].snag{border-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+
+/* Role picker */
+.hero{display:grid;grid-template-columns:auto 1fr;gap:6px 20px;align-items:center;padding:8px 0 4px}
+.hero-logo{width:112px;height:112px;grid-row:span 2;border-radius:24px;box-shadow:0 10px 30px rgba(0,30,70,.22)}
+.hero h1,.hero p{grid-column:2}
+.hero h1{font-size:30px}
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px}
+.role{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px;display:grid;gap:10px;border-top:5px solid var(--navy)}
+.role.team{border-top-color:var(--gold)}
+.role:hover{box-shadow:0 6px 24px rgba(0,30,70,.10)}
+.role:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.role[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
+.role h2{font-size:22px}
+.role ul{margin:0;padding-left:18px;color:var(--muted);font-size:14px}
+
+/* Report header */
+.rep-head{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.rep-title{font-family:var(--font-display);font-weight:800;font-size:22px;letter-spacing:.01em}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:600;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.open{background:var(--good-bg);color:var(--good)}
+.pill.closed{background:var(--wait-bg);color:var(--wait)}
+.pill.ok{background:var(--good-bg);color:var(--good)}
+.pill.snag{background:var(--bad-bg);color:var(--bad)}
+.pill.pending{background:var(--wait-bg);color:var(--wait)}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--soft);border-radius:10px;padding:12px 14px;border-left:4px solid var(--navy)}
+.tile.ok{border-left-color:var(--good)}
+.tile.snag{border-left-color:var(--bad)}
+.tile.sr{border-left-color:var(--gold)}
+.tile b{display:block;font-family:var(--font-display);font-size:28px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile span{font-size:13px;color:var(--muted)}
+
+.progress{height:8px;border-radius:99px;background:var(--soft);overflow:hidden}
+.progress i{display:block;height:100%;background:var(--gold);border-radius:99px;transition:width .3s}
+
+/* Site checklist */
+.sites{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.site{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.site:hover{border-color:var(--navy)}
+.site:focus-visible{outline:3px solid var(--gold)}
+.site .nm{flex:1;min-width:0;font-weight:500}
+.site.done-ok{border-left:4px solid var(--good)}
+.site.done-snag{border-left:4px solid var(--bad)}
+.site.pending{border-left:4px solid var(--line)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:900px;font-size:14px}
+th{background:var(--navy);color:#fff;text-align:left;font-weight:600;padding:9px 10px;font-size:12.5px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap}
+:root[data-theme="dark"] th{background:#003A70}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) th{background:#003A70}}
+td{padding:9px 10px;border-top:1px solid var(--line);vertical-align:top}
+tr:nth-child(even) td{background:color-mix(in srgb,var(--soft) 45%,transparent)}
+.thumb{width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block;cursor:zoom-in;background:var(--soft)}
+.desc{white-space:pre-line}
+
+.empty{text-align:center;padding:30px 16px;color:var(--muted)}
+.empty svg{width:56px;height:56px;margin-bottom:8px}
+
+/* History */
+.hist{display:grid;gap:8px}
+.hist-row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.hist-row .info{flex:1;min-width:200px}
+
+/* Modal */
+dialog{border:0;border-radius:14px;padding:0;background:var(--surface);color:var(--ink);width:min(640px,calc(100% - 24px));max-height:calc(100% - 24px)}
+dialog.wide{width:min(1050px,calc(100% - 24px))}
+dialog::backdrop{background:rgba(3,14,30,.55)}
+.m-head{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--surface);z-index:1}
+.m-head h2{flex:1;font-size:18px}
+.m-body{padding:18px;display:grid;gap:14px}
+.m-foot{display:flex;gap:10px;justify-content:flex-end;padding:14px 18px;border-top:1px solid var(--line);flex-wrap:wrap;position:sticky;bottom:0;background:var(--surface)}
+.photo-pick{border:1.5px dashed var(--line);border-radius:10px;padding:10px;display:grid;gap:8px;justify-items:start}
+.photo-pick img{max-height:160px;border-radius:8px}
+.photo-pick input{font-size:13px;max-width:100%}
+
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;z-index:50;max-width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.notice{border:1px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--surface));border-radius:10px;padding:10px 14px;font-size:14px}
+.notice.bad{border-color:var(--bad);background:var(--bad-bg)}
+.hide{display:none!important}
+@media (max-width:520px){ .hero-logo{width:72px;height:72px;border-radius:16px} .hero h1{font-size:24px} .rep-title{font-size:19px} .brand small{display:none} }
+@media (prefers-reduced-motion: reduce){ *{transition:none!important;animation:none!important} }
+
+body{padding-bottom:env(safe-area-inset-bottom)}
+.bar{padding-top:env(safe-area-inset-top)}
+.brand img{border-radius:10px;background:#fff}
+.pinbox{max-width:380px;margin:30px auto;text-align:center;display:grid;gap:12px}
+.pinbox input[type=password]{text-align:center;font-size:20px;letter-spacing:.15em}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.picker{position:relative;display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--muted)}
+.loclist{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 10px 30px rgba(0,30,70,.18);z-index:5;max-height:280px;overflow:auto;display:grid}
+.loclist button{all:unset;cursor:pointer;padding:10px 12px;border-bottom:1px solid var(--line);font-weight:500;color:var(--ink);display:flex;gap:8px;align-items:center}
+.loclist button span.z{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.loclist button:last-child{border-bottom:0}
+.loclist button:hover,.loclist button:focus{background:var(--soft)}
+.toolbar{display:grid;gap:12px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.chip .n{opacity:.75;font-weight:500;margin-left:4px}
+.zone{display:grid;gap:12px}
+.zone-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;list-style:none}
+.zone-head::-webkit-details-marker{display:none}
+.zone-head h2{font-size:19px}
+.park-name{font-family:var(--font-display);font-weight:700;font-size:15px;display:flex;gap:8px;align-items:center;margin:4px 0 2px;flex-wrap:wrap}
+.park-name a{font-family:var(--font-body);font-size:12px;font-weight:600;color:var(--navy)}
+.issues{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px}
+.issue{all:unset;box-sizing:border-box;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;grid-template-columns:76px 1fr 76px;gap:12px;align-items:start;border-left:5px solid var(--bad)}
+.issue.closed{border-left-color:var(--good)}
+.issue:hover{border-color:var(--navy)}
+.issue:focus-visible{outline:3px solid var(--gold)}
+.issue .ph{width:76px;height:76px;border-radius:8px;object-fit:cover;background:var(--soft);display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center;border:1px solid var(--line)}
+.issue .ph-l{font-size:10px;color:var(--muted);text-align:center;margin-top:3px;letter-spacing:.05em;text-transform:uppercase}
+.issue .body{display:grid;gap:4px;min-width:0}
+.issue .loc{font-weight:600}
+.issue .cm{font-size:14px;white-space:pre-line;overflow-wrap:anywhere}
+.issue .meta{font-size:12px;color:var(--muted)}
+.pill.p1{background:var(--bad-bg);color:var(--bad)}
+.pill.p2{background:var(--wait-bg);color:var(--wait)}
+.pill.open{background:var(--bad-bg);color:var(--bad)}
+.pill.close{background:var(--good-bg);color:var(--good)}
+.phn{position:absolute;right:4px;bottom:4px;background:rgba(0,58,112,.88);color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:1px 7px}
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;width:100%}
+.pgrid:empty{display:none}
+.pgrid .pi{position:relative;aspect-ratio:1;border-radius:8px;overflow:hidden;background:var(--soft);border:1px solid var(--line)}
+.pgrid .pi img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.pgrid .pi button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;border:0;background:rgba(14,35,64,.85);color:#fff;font-size:14px;line-height:26px;cursor:pointer;padding:0}
+.pgrid .pi .new{position:absolute;left:4px;bottom:4px;background:var(--gold);color:#1C1406;font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px}
+.phbtns{display:flex;gap:8px;flex-wrap:wrap}
+.addph{position:relative;display:inline-flex;align-items:center;gap:8px;border:1.5px dashed var(--navy);color:var(--navy);border-radius:8px;padding:9px 12px;font-weight:600;cursor:pointer;font-size:14px;background:var(--surface)}
+.addph svg{width:18px;height:18px}
+.addph input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.namechip{border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 12px;font-size:13px;color:#fff;background:transparent;cursor:pointer}
+.setup{max-width:640px;margin:20px auto;display:grid;gap:10px}
+.setup code{font-family:var(--font-mono);background:var(--soft);padding:1px 6px;border-radius:4px}
+@media (max-width:420px){ .issue{grid-template-columns:64px 1fr 64px} .issue .ph{width:64px;height:64px} .issues{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
-<div id="splash" role="status" aria-live="polite">
-  <img src="logo-full.png" alt="Imdaad Soft Services">
-  <div>Site Walk</div>
-  <div class="bar"><i></i></div>
-  <small id="msg">Loading…</small>
-</div>
-<iframe id="app" title="Site Walk" allow="camera; clipboard-write; fullscreen"></iframe>
-<script>
-  // >>>>>>>>>> PASTE YOUR LINK HERE (keep the quotes) <<<<<<<<<<
-  var APP_URL = "https://script.google.com/macros/s/AKfycbxMC1S-q8fnEquV7soezSLI9BrKI5ygXY1Ix-dLlaGvvuCoX-odjVwZQ1dbgroZo80W/exec";
+<header class="bar">
+  <div class="bar-in">
+    <button class="brand" id="brandBtn" type="button" aria-label="Site Walk home">
+      <img src="icon-192.png" alt="" width="42" height="42">
+      <span><b>Site Walk</b><small>Parks cleaning inspection</small></span>
+    </button>
+    <span class="spacer"></span>
+    <button class="namechip hide" id="nameChip" type="button"></button>
+    <button class="role-chip hide" id="lockBtn" type="button">Sign out</button>
+  </div>
+</header>
+<main id="app"></main>
+<dialog id="dlg"></dialog>
+<div class="toast hide" id="toast" role="status" aria-live="polite"></div>
 
-  var splash = document.getElementById("splash"), msg = document.getElementById("msg"), frame = document.getElementById("app");
-  function hide() { splash.classList.add("gone"); }
-  if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(APP_URL)) {
-    msg.textContent = "Setup needed: open index.html and paste the Apps Script link (ending with /exec) in APP_URL.";
-    document.querySelector("#splash .bar").style.display = "none";
-  } else if (!navigator.onLine) {
-    msg.textContent = "No internet connection. Connect and open the app again.";
-    document.querySelector("#splash .bar").style.display = "none";
-    window.addEventListener("online", function () { location.reload(); });
+<script>
+window.addEventListener("error",function(e){ if(e.target && e.target!==window) return; showErr((e.message||"Error")+" @ line "+(e.lineno||"?")); });
+window.addEventListener("unhandledrejection",function(e){ showErr("Promise: "+((e.reason&&e.reason.message)||e.reason)); });
+function showErr(m){ var a=document.getElementById("app"); if(a){ var d=document.createElement("div"); d.style.cssText="background:#FBE9E1;color:#B4380F;border:1px solid #B4380F;border-radius:10px;padding:12px;font:14px monospace;white-space:pre-wrap"; d.textContent="App error: "+m; a.prepend(d);} }
+</script>
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script>
+"use strict";
+const CFG=window.SITE_WALK_CONFIG||{};
+const CONFIGURED=/^https:\/\/[^/]+\.supabase\.co\/?$/.test(String(CFG.SUPABASE_URL||"").trim()) && String(CFG.SUPABASE_ANON_KEY||"").length>40;
+const sb=(CONFIGURED && window.supabase) ? window.supabase.createClient(String(CFG.SUPABASE_URL).trim().replace(/\/$/,""), String(CFG.SUPABASE_ANON_KEY).trim()) : null;
+const BUCKET="photos";
+const ICON={
+  plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>',
+  lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  gal:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></svg>',
+  leaf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15"/><path d="M5 19l8-8"/></svg>',
+  pin:'<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>'
+};
+const MONTH_NAMES=["January","February","March","April","May","June","July","August","September","October","November","December"];
+
+/* ---------- storage ---------- */
+const mem={};
+function lsGet(k){ try{ return localStorage.getItem(k); }catch(e){ return mem[k]||null; } }
+function lsSet(k,v){ try{ v===null?localStorage.removeItem(k):localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+
+/* ---------- state ---------- */
+function thisMonth(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
+const S={ signed:false, role:null, email:"", name:lsGet("sw.name")||"", loginAs:null, booting:true,
+  ready:false, err:null, issues:[], parks:[], locations:[], settings:{}, months:[],
+  month:thisMonth(), zone:"", status:"", q:"" };
+
+/* ---------- data helpers ---------- */
+function friendly(err){
+  const m=(err&&(err.message||err.error_description||err.msg))||String(err);
+  if(/Invalid login credentials/i.test(m)) return "Wrong password. Try again.";
+  if(/JWT expired|invalid JWT|not authenticated/i.test(m)) return "Your session ended. Sign in again.";
+  if(/close_needs_after/.test(m)) return "Add an After picture and the closed date before closing.";
+  if(/row-level security|permission denied/i.test(m)) return "You don't have permission to do this.";
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Can't reach the server. Check your internet connection.";
+  return m;
+}
+async function q(p){ const r=await p; if(r.error){ if(/JWT expired|invalid JWT/i.test(r.error.message||"")) signOut(true); throw new Error(friendly(r.error)); } return r.data; }
+async function fetchAll(make){ const out=[]; const size=1000; for(let from=0;;from+=size){ const rows=await q(make().range(from,from+size-1)); out.push(...rows); if(rows.length<size) break; } return out; }
+function monthRange(m){ const [y,mm]=m.split("-").map(Number); const a=`${y}-${String(mm).padStart(2,"0")}-01`; const n=mm===12?`${y+1}-01-01`:`${y}-${String(mm+1).padStart(2,"0")}-01`; return [a,n]; }
+function issueQuery(f){
+  let qq=sb.from("issues").select("*");
+  if(f.month==="open") qq=qq.eq("status","Open");
+  else if(f.month){ const [a,b]=monthRange(f.month); qq=qq.gte("issue_date",a).lt("issue_date",b); }
+  if(f.zone) qq=qq.eq("zone",f.zone);
+  if(f.park) qq=qq.eq("park",f.park);
+  if(f.status) qq=qq.eq("status",f.status);
+  return qq.order("zone").order("park").order("issue_date").order("created_at");
+}
+async function loadConfig(){
+  const [p,l,s]=await Promise.all([
+    q(sb.from("parks").select("name,zone,map_url").order("sort")),
+    q(sb.from("locations").select("name").order("sort")),
+    q(sb.from("settings").select("key,value"))]);
+  S.parks=p; S.locations=l.map(x=>x.name); S.settings={}; s.forEach(x=>S.settings[x.key]=x.value);
+}
+let lastSig="", loading=false;
+async function loadIssues(){
+  if(!S.signed||loading) return; loading=true;
+  try{
+    const [rows,months]=await Promise.all([fetchAll(()=>issueQuery({month:S.month})), q(sb.from("issue_months").select("month"))]);
+    S.err=null; S.ready=true;
+    const sig=JSON.stringify([rows,months]);
+    if(sig!==lastSig){ lastSig=sig; S.issues=rows; S.months=months.map(m=>m.month).sort().reverse(); render(); }
+  }catch(e){ S.ready=true; S.err=e.message; render(); }
+  finally{ loading=false; }
+}
+setInterval(()=>{ if(document.visibilityState==="visible" && S.signed) loadIssues(); },20000);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && S.signed) loadIssues(); });
+
+/* ---------- helpers ---------- */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function todayISO(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function dmy(iso){ if(!iso) return ""; const [y,m,d]=String(iso).slice(0,10).split("-"); return `${d}.${m}.${y}`; }
+function monthLabel(m){ if(m==="open") return "All open entries"; if(!m) return "All months"; const [y,mm]=m.split("-"); return `${MONTH_NAMES[+mm-1]} ${y}`; }
+function norm(s){ return String(s||"").trim().toLowerCase().replace(/\s+/g," "); }
+function zones(){ return [...new Set(S.parks.map(p=>p.zone))].sort(); }
+function parkOf(name){ return S.parks.find(p=>p.name===name); }
+function zoneOf(name){ const p=parkOf(name); return p?p.zone:""; }
+function isAdmin(){ return S.role==="admin"; }
+function fullUrl(path){ return path ? sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl : ""; }
+function thumbUrl(path){ return path ? fullUrl("thumbs/"+path) : ""; }
+let toastT;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hide"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.add("hide"),4200); }
+/* a thumbnail that falls back to the full photo */
+document.addEventListener("error",ev=>{ const el=ev.target; if(el && el.tagName==="IMG" && el.dataset && el.dataset.full && !el.dataset.fb){ el.dataset.fb="1"; el.src=el.dataset.full; } },true);
+function photoTag(path,alt,cls,extra){ return `<img class="${cls||""}" alt="${esc(alt)}" src="${thumbUrl(path)}" data-full="${esc(fullUrl(path))}" loading="lazy" ${extra||""}>`; }
+function gridRects(n,bw,bh,pad){ if(!n) return []; const cols=Math.ceil(Math.sqrt(n)), rows=Math.ceil(n/cols); const cw=(bw-pad*(cols+1))/cols, ch=(bh-pad*(rows+1))/rows, out=[]; for(let i=0;i<n;i++){ const c=i%cols, r=Math.floor(i/cols); out.push({x:pad+c*(cw+pad),y:pad+r*(ch+pad),w:cw,h:ch}); } return out; }
+
+/* ---------- auth ---------- */
+async function boot(){
+  if(!sb){ S.booting=false; render(true); return; }
+  try{
+    const {data}=await sb.auth.getSession();
+    if(data && data.session){ await afterSignIn(data.session.user.email); }
+  }catch(e){ S.err=friendly(e); }
+  S.booting=false; render(true);
+}
+async function afterSignIn(email){
+  S.email=email||"";
+  let admin=false; try{ admin=!!(await q(sb.rpc("is_admin"))); }catch(e){ admin=false; }
+  S.role=admin?"admin":"supervisor"; S.signed=true;
+  await loadConfig(); lastSig=""; await loadIssues();
+}
+async function signOut(silent){ try{ if(sb) await sb.auth.signOut(); }catch(e){} S.signed=false; S.role=null; S.issues=[]; S.ready=false; lastSig=""; render(true); if(!silent) toast("Signed out."); }
+$("#lockBtn").onclick=()=>signOut();
+$("#brandBtn").onclick=()=>{ if(!S.signed){ S.loginAs=null; render(true); } else window.scrollTo(0,0); };
+$("#nameChip").onclick=()=>askName();
+
+/* ---------- render ---------- */
+let renderQueued=false, renderPending=false;
+function render(force){
+  const a=document.activeElement;
+  if(!force && a && $("#app").contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)){ renderPending=true; return; }
+  if(renderQueued) return; renderQueued=true;
+  const run=()=>{ renderQueued=false; renderPending=false; try{ draw(); }catch(e){ showErr(e.message+" (draw)"); } };
+  if(document.visibilityState==="visible" && window.requestAnimationFrame) requestAnimationFrame(run); else setTimeout(run,0);
+}
+document.addEventListener("focusout",()=>setTimeout(()=>{ if(renderPending) render(); },50));
+function draw(){
+  $("#lockBtn").classList.toggle("hide",!S.signed);
+  $("#nameChip").classList.toggle("hide",!S.signed||!S.name);
+  $("#nameChip").textContent=(isAdmin()?"Admin · ":"Supervisor · ")+S.name;
+  let html=S.err?`<div class="notice">${esc(S.err)}</div>`:"";
+  if(!sb) html+=viewSetup();
+  else if(S.booting) html+=`<div class="card muted"><span class="spin"></span> Starting…</div>`;
+  else if(!S.signed) html+= S.loginAs ? viewLogin() : viewHome();
+  else if(!S.name) html+=viewName();
+  else html+=viewMain();
+  $("#app").innerHTML=html;
+  bind();
+}
+function viewSetup(){
+  return `<section class="card setup"><h2>Setup needed</h2>
+    <p style="margin:0">Open <code>config.js</code> and paste your Supabase <b>Project URL</b> and <b>anon public key</b>, then upload it again.</p>
+    <p class="muted small" style="margin:0">Supabase › Project Settings › API. The Project URL looks like <code>https://abcd.supabase.co</code>.</p></section>`;
+}
+function viewHome(){
+  return `<section class="hero">
+    <img class="hero-logo" src="icon-192.png" alt="Imdaad Soft Services logo" width="112" height="112" style="background:#fff">
+    <h1>Site Walk Report</h1>
+    <p class="muted" style="margin:0">Record cleaning issues in DM parks with before and after photos, and export them by zone or by park.</p>
+  </section>
+  <div class="roles">
+    <button class="role team" data-login="supervisor" type="button"><h2>Supervisor</h2>
+      <ul><li>Record site walk entries with photos</li><li>Close entries with After pictures</li><li>Export a zone or a park as PDF or Excel</li></ul>
+      <span class="small muted">${ICON.lock.replace('<svg','<svg width="12" height="12"')} Supervisor password</span></button>
+    <button class="role" data-login="admin" type="button"><h2>Admin</h2>
+      <ul><li>Everything supervisors can do</li><li>Delete entries</li><li>Edit the park and location lists and logos</li></ul>
+      <span class="small muted">${ICON.lock.replace('<svg','<svg width="12" height="12"')} Admin password</span></button>
+  </div>`;
+}
+function viewLogin(){
+  return `<section class="card"><form id="pinForm" class="pinbox">
+    <img src="logo-full.png" alt="Imdaad Soft Services" width="150" height="150" style="margin:0 auto">
+    <h2>${S.loginAs==="admin"?"Admin":"Supervisor"} sign in</h2>
+    <label class="f" for="pinIn" style="text-align:left">Password<input class="inp" id="pinIn" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit" id="pinBtn">Sign in</button>
+    <button class="btn ghost" type="button" id="pinBack">Back</button>
+  </form></section>`;
+}
+function viewName(){
+  return `<section class="card"><form id="nameForm" class="pinbox">
+    <h2>What's your name?</h2>
+    <p class="muted small" style="margin:0">It fills “Concerned person” on your entries. You only enter it once on this phone.</p>
+    <label class="f" for="nameIn" style="text-align:left">Your name<input class="inp" id="nameIn" required autocomplete="name" placeholder="e.g. Mr. Ranjith"></label>
+    <button class="btn primary" type="submit">Continue</button>
+  </form></section>`;
+}
+function askName(){
+  openDlg(`<form id="nmF"><div class="m-head"><h2>Your name</h2><button class="btn ghost" data-close type="button">Cancel</button></div>
+    <div class="m-body"><label class="f" for="nmIn">Shown as “Concerned person” on new entries<input class="inp" id="nmIn" value="${esc(S.name)}" required></label></div>
+    <div class="m-foot"><button class="btn primary" type="submit">Save</button></div></form>`);
+  $("#nmF").onsubmit=ev=>{ ev.preventDefault(); const v=$("#nmIn").value.trim(); if(!v) return; S.name=v; lsSet("sw.name",v); dlg.close(); render(true); toast("Name saved."); };
+}
+
+/* ---------- main view ---------- */
+function filtered(){
+  const qq=norm(S.q);
+  return S.issues.filter(it=>(!S.zone||it.zone===S.zone)&&(!S.status||it.status===S.status)&&
+    (!qq||norm(it.park+" "+it.location+" "+it.comment+" "+it.person+" "+it.remark).includes(qq)));
+}
+function viewMain(){
+  if(!S.ready) return `<div class="card muted"><span class="spin"></span> Loading entries…</div>`;
+  const list=filtered();
+  const base=S.issues.filter(it=>!S.zone||it.zone===S.zone);
+  const open=base.filter(i=>i.status==="Open").length, closed=base.filter(i=>i.status==="Close").length, p1=base.filter(i=>i.status==="Open"&&i.priority==="P1").length;
+  const months=[...new Set([thisMonth(),...S.months])].sort().reverse();
+  let out=`<section class="card toolbar">
+    <div class="row">
+      <label class="f" for="monthSel" style="min-width:190px">Month<select class="inp" id="monthSel">
+        ${months.map(m=>`<option value="${m}" ${m===S.month?"selected":""}>${esc(monthLabel(m))}</option>`).join("")}
+        <option value="open" ${S.month==="open"?"selected":""}>All open entries (any month)</option></select></label>
+      <label class="f" for="qIn" style="flex:1;min-width:200px">Search<input class="inp" id="qIn" type="search" value="${esc(S.q)}" placeholder="Park, location, comment, person…"></label>
+      <div class="row" style="align-self:flex-end"><button class="btn primary" data-act="add" type="button">${ICON.plus} New entry</button><button class="btn gold" data-act="export" type="button">${ICON.dl} Export</button></div>
+    </div>
+    <div class="chips" role="group" aria-label="Zone">
+      <button class="chip" type="button" data-zone="" aria-pressed="${!S.zone}">All zones<span class="n">${S.issues.length}</span></button>
+      ${zones().map(z=>`<button class="chip" type="button" data-zone="${esc(z)}" aria-pressed="${S.zone===z}">${esc(z)}<span class="n">${S.issues.filter(i=>i.zone===z).length}</span></button>`).join("")}
+    </div>
+    <div class="chips" role="group" aria-label="Status">
+      ${[["","All"],["Open","Open"],["Close","Closed"]].map(([v,l])=>`<button class="chip" type="button" data-status="${v}" aria-pressed="${S.status===v}">${l}</button>`).join("")}
+    </div>
+  </section>
+  <div class="tiles">
+    <div class="tile"><b>${base.length}</b><span>Entries · ${esc(monthLabel(S.month))}</span></div>
+    <div class="tile snag"><b>${open}</b><span>Open</span></div>
+    <div class="tile ok"><b>${closed}</b><span>Closed</span></div>
+    <div class="tile sr"><b>${p1}</b><span>Open P1</span></div>
+  </div>`;
+  if(!list.length){
+    out+=`<section class="card empty">${ICON.leaf}<h2 style="color:var(--ink)">No entries here</h2><p style="margin:6px auto 0;max-width:46ch">${S.issues.length?"Nothing matches the selected zone, status or search.":"No entries for "+esc(monthLabel(S.month))+" yet. Tap “New entry” to record the first one."}</p></section>`;
   } else {
-    frame.addEventListener("load", function () { setTimeout(hide, 600); });
-    setTimeout(function () { if (!splash.classList.contains("gone")) msg.textContent = "Still loading. Check your connection…"; }, 12000);
-    frame.src = APP_URL;
+    const byZone={}; list.forEach(it=>{ (byZone[it.zone]=byZone[it.zone]||[]).push(it); });
+    Object.keys(byZone).sort().forEach(z=>{
+      const items=byZone[z]; const zo=items.filter(i=>i.status==="Open").length;
+      const byPark={}; items.forEach(it=>{ (byPark[it.park]=byPark[it.park]||[]).push(it); });
+      out+=`<details class="card zone" open><summary class="zone-head"><h2>${esc(z)}</h2><span class="pill open">${zo} open</span><span class="pill close">${items.length-zo} closed</span><span style="flex:1"></span>
+        <span class="small muted">${Object.keys(byPark).length} park${Object.keys(byPark).length===1?"":"s"}</span></summary>
+        ${Object.keys(byPark).sort().map(p=>{ const pk=parkOf(p); return `<div><div class="park-name">${esc(p)} <span class="small muted" style="font-weight:500">${byPark[p].length}</span>${pk&&pk.map_url?`<a href="${esc(pk.map_url)}" target="_blank" rel="noopener">${ICON.pin} Map</a>`:""}</div>
+          <div class="issues">${byPark[p].map(issueCard).join("")}</div></div>`; }).join("")}
+      </details>`;
+    });
   }
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+  if(isAdmin()) out+=viewSettings();
+  return out;
+}
+function issueCard(it){
+  const ph=(arr,l)=>{ const ids=arr||[]; if(!ids.length) return `<div class="ph">No ${l.toLowerCase()}<br>photo</div>`;
+    return `<div style="position:relative">${photoTag(ids[0],l+" photo","ph")}${ids.length>1?`<span class="phn">+${ids.length-1}</span>`:""}</div>`; };
+  return `<button class="issue ${it.status==="Close"?"closed":""}" type="button" data-issue="${esc(it.id)}">
+    <div>${ph(it.before_photos,"Before")}<div class="ph-l">Before</div></div>
+    <div class="body">
+      <div class="row" style="gap:6px"><span class="pill ${it.priority==="P1"?"p1":"p2"}">${esc(it.priority)}</span><span class="pill ${it.status==="Close"?"close":"open"}">${it.status==="Close"?"Closed":"Open"}</span></div>
+      <div class="loc">${esc(it.location)}</div>
+      <div class="cm">${esc(it.comment)}</div>
+      <div class="meta">${esc(it.person)} · ${esc(dmy(it.issue_date))}${it.closed_date?" · closed "+esc(dmy(it.closed_date)):""}</div>
+      ${it.remark?`<div class="meta">Remark: ${esc(it.remark)}</div>`:""}
+    </div>
+    <div>${ph(it.after_photos,"After")}<div class="ph-l">After</div></div>
+  </button>`;
+}
+function viewSettings(){
+  const st=S.settings||{};
+  return `<section class="card"><details><summary style="cursor:pointer"><h2 style="display:inline">Admin settings</h2> <span class="small muted">Parks, locations, logos and password</span></summary>
+    <div class="grid2" style="margin-top:14px;align-items:start">
+      <label class="f" for="parksTxt">Parks: one per line as “Park name | Zone 04 | Google Maps link (optional)”<textarea class="inp" id="parksTxt" style="min-height:280px;font-family:var(--font-mono);font-size:12px">${esc(S.parks.map(p=>[p.name,p.zone,p.map_url].filter(Boolean).join(" | ")).join("\n"))}</textarea>
+        <button class="btn primary" data-act="saveParks" type="button" style="justify-self:start">Save park list (${S.parks.length})</button></label>
+      <label class="f" for="locTxt">Locations: one per line<textarea class="inp" id="locTxt" style="min-height:280px">${esc(S.locations.join("\n"))}</textarea>
+        <button class="btn primary" data-act="saveLocs" type="button" style="justify-self:start">Save locations</button></label>
+      <div style="display:grid;gap:12px">
+        <label class="f" for="orgLine">Company line on exports<input class="inp" id="orgLine" value="${esc(st.orgLine||"")}"></label>
+        <button class="btn" data-act="saveOrg" type="button" style="justify-self:start">Save company line</button>
+        ${["logoLeft","logoRight"].map(k=>`<div class="photo-pick"><span class="small muted"><b>${k==="logoLeft"?"Left":"Right"} logo</b> on PDF and Excel header</span>
+          ${st[k]?`<img src="${esc(fullUrl(st[k]))}" alt="Logo" style="max-height:60px">`:""}
+          <input type="file" accept="image/png,image/jpeg" id="${k}File" aria-label="Upload ${k==="logoLeft"?"left":"right"} logo">
+          ${st[k]?`<button class="btn sm ghost" data-rmlogo="${k}" type="button">Remove</button>`:""}</div>`).join("")}
+      </div>
+      <form id="pwF" class="photo-pick"><span class="small muted"><b>Change the admin password</b></span>
+        <input class="inp" id="newPw" type="password" placeholder="New admin password (at least 6 characters)" autocomplete="new-password" aria-label="New admin password">
+        <button class="btn sm" type="submit">Save password</button>
+        <span class="small muted">To change the supervisor password: Supabase › Authentication › Users › supervisor › Reset password / Update user.</span></form>
+    </div></details></section>`;
+}
+
+/* ---------- bindings ---------- */
+function bind(){
+  document.querySelectorAll("[data-login]").forEach(b=>b.onclick=()=>{ S.loginAs=b.dataset.login; render(true); setTimeout(()=>{ const p=$("#pinIn"); p&&p.focus(); },50); });
+  const pb=$("#pinBack"); if(pb) pb.onclick=()=>{ S.loginAs=null; render(true); };
+  const pf=$("#pinForm"); if(pf) pf.onsubmit=async ev=>{ ev.preventDefault(); const pw=$("#pinIn").value; const b=$("#pinBtn"); b.disabled=true; b.innerHTML='<span class="spin"></span> Signing in';
+    const email=S.loginAs==="admin"?CFG.ADMIN_EMAIL:CFG.SUPERVISOR_EMAIL;
+    try{ const data=await q(sb.auth.signInWithPassword({email,password:pw})); S.loginAs=null; S.err=null; await afterSignIn(data.user.email); render(true); }
+    catch(e){ toast(e.message); b.disabled=false; b.textContent="Sign in"; } };
+  const nf=$("#nameForm"); if(nf) nf.onsubmit=ev=>{ ev.preventDefault(); const v=$("#nameIn").value.trim(); if(!v) return; S.name=v; lsSet("sw.name",v); render(true); };
+  document.querySelectorAll("[data-act]").forEach(b=>b.onclick=()=>actions[b.dataset.act]());
+  document.querySelectorAll("[data-zone]").forEach(b=>b.onclick=()=>{ S.zone=b.dataset.zone; render(true); });
+  document.querySelectorAll("[data-status]").forEach(b=>b.onclick=()=>{ S.status=b.dataset.status; render(true); });
+  document.querySelectorAll("[data-issue]").forEach(b=>b.onclick=()=>{ const it=S.issues.find(x=>x.id===b.dataset.issue); if(it) issueForm(it); });
+  const ms=$("#monthSel"); if(ms) ms.onchange=()=>{ S.month=ms.value; S.ready=false; lastSig=""; ms.blur(); render(true); loadIssues(); };
+  const qi=$("#qIn"); if(qi){ let t; qi.oninput=()=>{ clearTimeout(t); t=setTimeout(()=>{ S.q=qi.value; const pos=qi.selectionStart; render(true); const n=$("#qIn"); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} } },250); }; }
+  document.querySelectorAll("[data-rmlogo]").forEach(b=>b.onclick=()=>saveSetting(b.dataset.rmlogo,"","Logo removed."));
+  ["logoLeft","logoRight"].forEach(k=>{ const inp=$("#"+k+"File"); if(inp) inp.onchange=()=>uploadLogo(k,inp.files[0]); });
+  const pw=$("#pwF"); if(pw) pw.onsubmit=async ev=>{ ev.preventDefault(); const v=$("#newPw").value; if(v.length<6){ toast("Use at least 6 characters."); return; }
+    try{ await q(sb.auth.updateUser({password:v})); $("#newPw").value=""; toast("Admin password changed."); }catch(e){ toast(e.message); } };
+}
+
+/* ---------- dialogs ---------- */
+const dlg=$("#dlg");
+function openDlg(html,wide){ dlg.className=wide?"wide":""; dlg.innerHTML=html; if(!dlg.open) dlg.showModal(); dlg.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>dlg.close()); }
+dlg.addEventListener("click",ev=>{ if(ev.target===dlg) dlg.close(); });
+function confirmDlg(title,body,okLabel,danger){
+  return new Promise(res=>{
+    openDlg(`<div class="m-head"><h2>${esc(title)}</h2></div><div class="m-body"><p style="margin:0">${body}</p></div>
+      <div class="m-foot"><button class="btn" id="cNo" type="button">Cancel</button><button class="btn ${danger?"danger":"primary"}" id="cYes" type="button">${esc(okLabel)}</button></div>`);
+    let done=false; const fin=v=>{ if(done) return; done=true; dlg.close(); res(v); };
+    $("#cNo").onclick=()=>fin(false); $("#cYes").onclick=()=>fin(true);
+    dlg.addEventListener("close",()=>fin(false),{once:true});
+  });
+}
+function makePicker(input,listEl,items,onPick){
+  const show=()=>{
+    const qq=norm(input.value);
+    const m=items().filter(x=>!qq||norm(x.label+" "+(x.side||"")).includes(qq)).slice(0,40);
+    if(!m.length||(m.length===1&&norm(m[0].label)===qq)){ listEl.classList.add("hide"); return; }
+    listEl.innerHTML=m.map(x=>`<button type="button" role="option" data-v="${esc(x.value)}">${esc(x.label)}${x.side?`<span class="z">${esc(x.side)}</span>`:""}</button>`).join("");
+    listEl.classList.remove("hide");
+    listEl.querySelectorAll("[data-v]").forEach(b=>{ const pick=ev=>{ ev.preventDefault(); input.value=b.dataset.v; listEl.classList.add("hide"); onPick&&onPick(b.dataset.v); }; b.onmousedown=pick; b.onclick=pick; });
+  };
+  input.oninput=()=>{ show(); onPick&&onPick(input.value,true); };
+  input.onfocus=show;
+  input.onblur=()=>setTimeout(()=>listEl.classList.add("hide"),150);
+  input.onkeydown=ev=>{ if(ev.key==="Escape") listEl.classList.add("hide"); };
+}
+
+/* ---------- issue form ---------- */
+function photoButtons(k){
+  const label=k==="before"?"before":"after";
+  return `<div class="phbtns">
+    <label class="addph">${ICON.cam} Camera<input type="file" accept="image/*" capture="environment" data-pick="${k}" aria-label="Take a ${label} photo with the camera"></label>
+    <label class="addph">${ICON.gal} Gallery<input type="file" accept="image/*" multiple data-pick="${k}" aria-label="Choose ${label} photos from the gallery"></label></div>`;
+}
+function issueForm(it){
+  const isNew=!it;
+  const d=it||{park:"",zone:"",location:"",priority:"P2",comment:"",person:S.name,before_photos:[],issue_date:todayISO(),after_photos:[],closed_date:null,status:"Open",remark:""};
+  const locIsOther=!!d.location && !S.locations.some(l=>norm(l)===norm(d.location));
+  const pk0=parkOf(d.park);
+  openDlg(`<form id="isF">
+  <div class="m-head"><h2>${isNew?"New site walk entry":"Edit entry"}</h2><button class="btn ghost" data-close type="button">Cancel</button></div>
+  <div class="m-body">
+    <div class="picker"><label for="fPark">Park name</label><input class="inp" id="fPark" value="${esc(d.park)}" placeholder="Type to search parks" autocomplete="off"><div id="parkList" class="loclist hide" role="listbox" aria-label="Parks"></div>
+      <a id="mapLink" class="small ${pk0&&pk0.map_url?"":"hide"}" href="${esc(pk0?pk0.map_url:"#")}" target="_blank" rel="noopener" style="font-weight:600;color:var(--navy)">${ICON.pin} Open in Google Maps</a></div>
+    <div class="grid2">
+      <label class="f" for="fZone">Zone<input class="inp" id="fZone" value="${esc(d.zone)}" readonly tabindex="-1" style="background:var(--soft)" placeholder="Filled from the park"></label>
+      <div style="display:grid;gap:5px"><span class="small muted" style="font-weight:600">Priority</span>
+        <div class="seg" role="group" aria-label="Priority">
+          <button type="button" class="snag" data-pr="P1" aria-pressed="${d.priority==="P1"}">P1<br><span class="small" style="font-weight:400">Urgent</span></button>
+          <button type="button" class="ok" data-pr="P2" aria-pressed="${d.priority!=="P1"}">P2<br><span class="small" style="font-weight:400">Normal</span></button>
+        </div></div>
+    </div>
+    <div class="picker"><label for="fLoc">Location</label><input class="inp" id="fLoc" value="${esc(locIsOther?"Other":d.location)}" placeholder="Type to search locations, or choose Other" autocomplete="off"><div id="locList" class="loclist hide" role="listbox" aria-label="Locations"></div></div>
+    <label class="f ${locIsOther?"":"hide"}" for="fLocOther" id="locOtherWrap">Other location (type it)<input class="inp" id="fLocOther" value="${esc(locIsOther?d.location:"")}" placeholder="e.g. Area behind the mosque"></label>
+    <label class="f" for="fCom">Comment<textarea class="inp" id="fCom" placeholder="e.g. Waste materials need to be removed">${esc(d.comment)}</textarea></label>
+    <div class="grid2">
+      <label class="f" for="fPer">Concerned person<input class="inp" id="fPer" value="${esc(d.person)}"></label>
+      <label class="f" for="fDate">Date<input class="inp" id="fDate" type="date" value="${esc(String(d.issue_date||"").slice(0,10))}"></label>
+    </div>
+    <div class="grid2">
+      <div class="photo-pick"><span class="small muted" style="font-weight:600">Before pictures <span id="cntBefore"></span></span><div class="pgrid" id="gBefore"></div>${photoButtons("before")}</div>
+      <div class="photo-pick"><span class="small muted" style="font-weight:600">After pictures <span id="cntAfter"></span></span><div class="pgrid" id="gAfter"></div>${photoButtons("after")}</div>
+    </div>
+    <div class="grid2">
+      <label class="f ${(d.after_photos||[]).length?"":"hide"}" for="fClosed" id="closedWrap">Closed date<input class="inp" id="fClosed" type="date" value="${esc(String(d.closed_date||((d.after_photos||[]).length?todayISO():"")).slice(0,10))}"></label>
+      <label class="f" for="fStatus">Status<select class="inp" id="fStatus"><option ${d.status!=="Close"?"selected":""}>Open</option><option ${d.status==="Close"?"selected":""}>Close</option></select>
+        <span class="small muted" id="stHint" style="font-weight:400">${(d.after_photos||[]).length?"":"Add an After picture to close this entry."}</span></label>
+    </div>
+    <label class="f" for="fRem">Remark<textarea class="inp" id="fRem" style="min-height:56px">${esc(d.remark)}</textarea></label>
+    <div id="fErr" class="notice bad hide"></div>
+  </div>
+  <div class="m-foot">${!isNew&&isAdmin()?`<button class="btn danger" id="fDel" type="button" style="margin-right:auto">Delete</button>`:""}<button class="btn" data-close type="button">Cancel</button><button class="btn primary" id="fSave" type="submit">${isNew?"Save entry":"Save changes"}</button></div>
+  </form>`);
+  let pr=d.priority==="P1"?"P1":"P2";
+  dlg.querySelectorAll("[data-pr]").forEach(b=>b.onclick=()=>{ pr=b.dataset.pr; dlg.querySelectorAll("[data-pr]").forEach(x=>x.setAttribute("aria-pressed",x===b)); });
+  const parkIn=$("#fPark"), zoneIn=$("#fZone"), mapA=$("#mapLink");
+  makePicker(parkIn,$("#parkList"),()=>S.parks.map(p=>({value:p.name,label:p.name,side:p.zone})),v=>{ const p=parkOf(v); zoneIn.value=p?p.zone:""; mapA.classList.toggle("hide",!(p&&p.map_url)); if(p&&p.map_url) mapA.href=p.map_url; });
+  makePicker($("#fLoc"),$("#locList"),()=>S.locations.map(l=>({value:l,label:l})).concat([{value:"Other",label:"Other",side:"type it yourself"}]),(v,typing)=>{ const other=norm(v)==="other"; $("#locOtherWrap").classList.toggle("hide",!other); if(other&&!typing) setTimeout(()=>$("#fLocOther").focus(),50); });
+  const ph={ before:{ids:[...(d.before_photos||[])],files:[]}, after:{ids:[...(d.after_photos||[])],files:[]} };
+  const hasAfterNow=()=>ph.after.ids.length+ph.after.files.length>0;
+  const statusSel=$("#fStatus");
+  const syncAfter=()=>{ const h=hasAfterNow(); $("#closedWrap").classList.toggle("hide",!h); $("#stHint").textContent=h?"":"Add an After picture to close this entry."; if(!h) statusSel.value="Open"; };
+  const drawPh=k=>{
+    const g=$(k==="before"?"#gBefore":"#gAfter"); const s=ph[k];
+    g.innerHTML=s.ids.map((id,i)=>`<div class="pi">${photoTag(id,(k==="before"?"Before":"After")+" photo","",'data-zoomid="'+esc(id)+'"')}<button type="button" aria-label="Remove photo" data-rm="${k}:id:${i}">✕</button></div>`).join("")+
+      s.files.map((f,i)=>`<div class="pi"><img alt="New photo" src="${f.url}"><span class="new">NEW</span><button type="button" aria-label="Remove photo" data-rm="${k}:f:${i}">✕</button></div>`).join("");
+    const n=s.ids.length+s.files.length; $(k==="before"?"#cntBefore":"#cntAfter").textContent=n?`(${n})`:"";
+    g.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{ const [kk,type,i]=b.dataset.rm.split(":"); if(type==="id") ph[kk].ids.splice(+i,1); else ph[kk].files.splice(+i,1); drawPh(kk); if(kk==="after") syncAfter(); });
+    g.querySelectorAll("[data-zoomid]").forEach(im=>im.onclick=()=>window.open(fullUrl(im.dataset.zoomid),"_blank"));
+  };
+  drawPh("before"); drawPh("after");
+  statusSel.onchange=()=>{ if(statusSel.value==="Close" && !hasAfterNow()){ statusSel.value="Open"; toast("Add an After picture first."); } if(statusSel.value==="Close" && !$("#fClosed").value) $("#fClosed").value=todayISO(); };
+  dlg.querySelectorAll("[data-pick]").forEach(inp=>inp.onchange=()=>{
+    const k=inp.dataset.pick; const fs=[...inp.files]; if(!fs.length) return;
+    const wasEmpty=!hasAfterNow();
+    fs.forEach(f=>ph[k].files.push({file:f,url:URL.createObjectURL(f)})); inp.value=""; drawPh(k);
+    if(k==="after"){ if(!$("#fClosed").value) $("#fClosed").value=todayISO(); if(wasEmpty) statusSel.value="Close"; syncAfter(); }
+  });
+  const del=$("#fDel"); if(del) del.onclick=async()=>{ if(!(await confirmDlg("Delete entry?",`This removes the entry for <b>${esc(d.park)}</b> (${esc(d.location)}) and its photos.`,"Delete",true))) return;
+    try{ await q(sb.from("issues").delete().eq("id",d.id)); const paths=[...(d.before_photos||[]),...(d.after_photos||[])]; if(paths.length){ try{ await sb.storage.from(BUCKET).remove(paths.concat(paths.map(p=>"thumbs/"+p))); }catch(e){} }
+      toast("Entry deleted."); lastSig=""; loadIssues(); }catch(x){ toast(x.message); } };
+  $("#isF").onsubmit=async ev=>{
+    ev.preventDefault();
+    const err=$("#fErr"); err.classList.add("hide"); const fail=m=>{ err.textContent=m; err.classList.remove("hide"); err.scrollIntoView({block:"nearest"}); };
+    const pk=S.parks.find(p=>norm(p.name)===norm(parkIn.value));
+    if(!pk) return fail("Choose a park from the list. Ask the admin if the park is missing.");
+    const typedLoc=$("#fLoc").value.trim(); let lc=S.locations.find(l=>norm(l)===norm(typedLoc));
+    if(!lc && norm(typedLoc)==="other"){ lc=$("#fLocOther").value.trim(); if(!lc) return fail("Type the location in “Other location”."); }
+    if(!lc && typedLoc) return fail("Choose a location from the list, or choose Other and type it.");
+    if(!lc) return fail("Choose a location.");
+    if(!$("#fCom").value.trim()) return fail("Write a comment describing the issue.");
+    if(!$("#fPer").value.trim()) return fail("Enter the concerned person.");
+    if(!$("#fDate").value) return fail("Choose the date.");
+    if(statusSel.value==="Close" && !$("#fClosed").value) return fail("Choose the closed date.");
+    const btn=$("#fSave"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Saving…';
+    try{
+      for(const k of ["before","after"]){
+        const s=ph[k]; const total=s.files.length;
+        for(let i=0;i<total;i++){ btn.innerHTML=`<span class="spin"></span> Uploading ${k} photo ${i+1}/${total}…`; s.ids.push(await uploadPhoto(s.files[0].file)); s.files.shift(); drawPh(k); }
+      }
+      btn.innerHTML='<span class="spin"></span> Saving…';
+      const body={ park:pk.name, zone:pk.zone, location:lc, priority:pr, comment:$("#fCom").value.trim(), person:$("#fPer").value.trim(),
+        before_photos:ph.before.ids, issue_date:$("#fDate").value, after_photos:ph.after.ids,
+        closed_date: hasAfterNow() && $("#fClosed").value ? $("#fClosed").value : null, status:statusSel.value, remark:$("#fRem").value.trim() };
+      if(isNew) await q(sb.from("issues").insert(body)); else await q(sb.from("issues").update(body).eq("id",d.id));
+      dlg.close(); toast(isNew?"Entry saved.":"Entry updated.");
+      const m=body.issue_date.slice(0,7); if(isNew && S.month!=="open" && m!==S.month){ S.month=m; S.ready=false; }
+      lastSig=""; loadIssues();
+    }catch(x){ btn.disabled=false; btn.textContent=isNew?"Save entry":"Save changes"; fail(x.message||"Couldn't save. Try again."); }
+  };
+}
+
+/* ---------- photos ---------- */
+async function resized(file,max,qual){
+  const bmp=await createImageBitmap(file);
+  const sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
+  const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
+  const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(bmp,0,0,c.width,c.height);
+  return await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(new Error("Couldn't read that photo.")),"image/jpeg",qual));
+}
+function newId(){ return (crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)); }
+async function uploadPhoto(file){
+  let full,small;
+  try{ full=await resized(file,1600,0.8); small=await resized(file,420,0.72); }catch(e){ throw new Error("That file isn't a photo the app can read. Use a JPG or PNG."); }
+  const d=new Date(); const path=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,"0")}/${newId()}.jpg`;
+  await q(sb.storage.from(BUCKET).upload(path,full,{contentType:"image/jpeg",upsert:false}));
+  try{ await q(sb.storage.from(BUCKET).upload("thumbs/"+path,small,{contentType:"image/jpeg",upsert:false})); }catch(e){}
+  return path;
+}
+async function uploadLogo(k,file){
+  if(!file) return;
+  try{ const b=await resized(file,600,0.92); const path=`settings/${k}-${Date.now()}.jpg`; await q(sb.storage.from(BUCKET).upload(path,b,{contentType:"image/jpeg"})); await saveSetting(k,path,"Logo saved."); }
+  catch(x){ toast(x.message||"Couldn't upload the logo."); }
+}
+async function saveSetting(key,value,msg){
+  try{ await q(sb.from("settings").upsert({key,value})); S.settings[key]=value; toast(msg||"Saved."); render(true); }catch(x){ toast(x.message); }
+}
+
+/* ---------- actions ---------- */
+const actions={
+  add:()=>issueForm(null),
+  export:()=>exportDlg(),
+  saveParks:async()=>{
+    const lines=$("#parksTxt").value.split("\n").map(s=>s.trim()).filter(Boolean); const list=[], bad=[];
+    lines.forEach((l,i)=>{ const p=l.split("|").map(x=>x.trim()); if(p.length<2||!p[0]||!p[1]) bad.push(i+1); else list.push({name:p[0],zone:p[1],map_url:p.slice(2).join("|")||""}); });
+    if(bad.length){ toast(`Line ${bad.slice(0,5).join(", ")} needs the format “Park name | Zone 04 | link”.`); return; }
+    try{ const n=await q(sb.rpc("replace_parks",{items:list})); await loadConfig(); render(true); toast(`Park list saved (${n} parks).`); }catch(x){ toast(x.message); }
+  },
+  saveLocs:async()=>{ const list=$("#locTxt").value.split("\n").map(s=>s.trim()).filter(Boolean); try{ const n=await q(sb.rpc("replace_locations",{items:list})); await loadConfig(); render(true); toast(`Locations saved (${n}).`); }catch(x){ toast(x.message); } },
+  saveOrg:()=>saveSetting("orgLine",$("#orgLine").value.trim(),"Company line saved.")
+};
+
+/* ---------- export ---------- */
+function exportDlg(){
+  const zs=zones(); const months=[...new Set([thisMonth(),...S.months])].sort().reverse();
+  const defMonth=S.month==="open"?"":S.month;
+  openDlg(`<form id="exF"><div class="m-head"><h2>Export report</h2><button class="btn ghost" data-close type="button">Cancel</button></div>
+  <div class="m-body">
+    <div style="display:grid;gap:6px"><span class="small muted" style="font-weight:600">Export</span>
+      <div class="seg" role="group" aria-label="Export scope">
+        <button type="button" class="ok" data-scope="zone" aria-pressed="true">Whole zone<br><span class="small" style="font-weight:400">All parks in one zone</span></button>
+        <button type="button" class="ok" data-scope="park" aria-pressed="false">One park<br><span class="small" style="font-weight:400">A single park only</span></button>
+      </div></div>
+    <label class="f" for="exZone" id="exZoneWrap">Zone<select class="inp" id="exZone">${zs.map(z=>`<option ${z===S.zone?"selected":""}>${esc(z)}</option>`).join("")}</select></label>
+    <div class="picker hide" id="exParkWrap"><label for="exPark">Park name</label><input class="inp" id="exPark" placeholder="Type to search parks" autocomplete="off"><div id="exParkList" class="loclist hide" role="listbox" aria-label="Parks"></div></div>
+    <div class="grid2">
+      <label class="f" for="exMonth">Month<select class="inp" id="exMonth">${months.map(m=>`<option value="${m}" ${m===defMonth?"selected":""}>${esc(monthLabel(m))}</option>`).join("")}<option value="" ${!defMonth?"selected":""}>All months</option></select></label>
+      <label class="f" for="exStatus">Status<select class="inp" id="exStatus"><option value="">All entries</option><option value="Open">Open only</option><option value="Close">Closed only</option></select></label>
+    </div>
+    <div style="display:grid;gap:6px"><span class="small muted" style="font-weight:600">File type</span>
+      <div class="seg" role="group" aria-label="File type">
+        <button type="button" class="ok" data-fmt="pdf" aria-pressed="true">PDF<br><span class="small" style="font-weight:400">To share or print</span></button>
+        <button type="button" class="ok" data-fmt="xlsx" aria-pressed="false">Excel<br><span class="small" style="font-weight:400">To edit</span></button>
+      </div></div>
+    <div id="exErr" class="notice bad hide"></div>
+  </div>
+  <div class="m-foot"><button class="btn" data-close type="button">Cancel</button><button class="btn primary" id="exGo" type="submit">${ICON.dl} Export</button></div></form>`);
+  let scope="zone", fmt="pdf";
+  dlg.querySelectorAll("[data-scope]").forEach(b=>b.onclick=()=>{ scope=b.dataset.scope; dlg.querySelectorAll("[data-scope]").forEach(x=>x.setAttribute("aria-pressed",x===b)); $("#exZoneWrap").classList.toggle("hide",scope!=="zone"); $("#exParkWrap").classList.toggle("hide",scope!=="park"); });
+  dlg.querySelectorAll("[data-fmt]").forEach(b=>b.onclick=()=>{ fmt=b.dataset.fmt; dlg.querySelectorAll("[data-fmt]").forEach(x=>x.setAttribute("aria-pressed",x===b)); });
+  makePicker($("#exPark"),$("#exParkList"),()=>S.parks.map(p=>({value:p.name,label:p.name,side:p.zone})));
+  $("#exF").onsubmit=async ev=>{
+    ev.preventDefault(); const err=$("#exErr"); err.classList.add("hide");
+    const f={month:$("#exMonth").value, status:$("#exStatus").value};
+    if(scope==="zone") f.zone=$("#exZone").value;
+    else { const pk=S.parks.find(p=>norm(p.name)===norm($("#exPark").value)); if(!pk){ err.textContent="Choose a park from the list."; err.classList.remove("hide"); return; } f.park=pk.name; }
+    const btn=$("#exGo"); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Preparing…';
+    try{ await runExport(f,fmt,btn); }catch(x){ err.textContent=x.message||"Couldn't create the file."; err.classList.remove("hide"); btn.disabled=false; btn.innerHTML=ICON.dl+" Export"; }
+  };
+}
+async function imgData(path,max){
+  if(!path) return null;
+  try{
+    const r=await fetch(fullUrl(path)); if(!r.ok) return null;
+    const bmp=await createImageBitmap(await r.blob());
+    const sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas"); c.width=Math.round(bmp.width*sc); c.height=Math.round(bmp.height*sc);
+    const g=c.getContext("2d"); g.fillStyle="#fff"; g.fillRect(0,0,c.width,c.height); g.drawImage(bmp,0,0,c.width,c.height);
+    return {data:c.toDataURL("image/jpeg",0.85),w:c.width,h:c.height};
+  }catch(e){ return null; }
+}
+function fit(w,h,bw,bh){ const s=Math.min(bw/w,bh/h); return {w:w*s,h:h*s}; }
+function scopeLabel(f){ return (f.park?f.park+" ("+zoneOf(f.park)+")":f.zone)+" · "+monthLabel(f.month)+(f.status?" · "+(f.status==="Close"?"Closed":"Open")+" only":""); }
+function saveBlob(blob,filename){ const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),60000); return url; }
+
+async function runExport(f,fmt,btn){
+  const items=await fetchAll(()=>issueQuery(f));
+  if(!items.length) throw new Error("No entries match this zone or park, month and status.");
+  const total=items.reduce((n,it)=>n+(it.before_photos||[]).length+(it.after_photos||[]).length,0);
+  let done=0; const tick=()=>{ done++; btn.innerHTML=`<span class="spin"></span> Loading photos ${done}/${total}`; };
+  const imgs=[];
+  for(const it of items){
+    const load=async arr=>{ const out=[]; for(let i=0;i<arr.length;i+=4){ const part=await Promise.all(arr.slice(i,i+4).map(async p=>{ const r=await imgData(p,900); tick(); return r; })); out.push(...part); } return out.filter(Boolean); };
+    imgs.push({before:await load(it.before_photos||[]), after:await load(it.after_photos||[])});
   }
+  btn.innerHTML='<span class="spin"></span> Building file…';
+  const logos={left:await imgData(S.settings.logoLeft,500), right:await imgData(S.settings.logoRight,500)};
+  const tag=(f.park||f.zone).replace(/[^\w]+/g,"_").replace(/^_|_$/g,"");
+  const filename=`Site_Walk_Report_${tag}_${f.month||"all"}.${fmt}`;
+  const blob= fmt==="pdf" ? buildPdf(f,items,imgs,logos) : await buildXlsx(f,items,imgs,logos);
+  const url=saveBlob(blob,filename);
+  openDlg(`<div class="m-head"><h2>${fmt==="pdf"?"PDF":"Excel"} ready</h2><button class="btn ghost" data-close type="button">Close</button></div>
+    <div class="m-body"><p style="margin:0"><b>${esc(filename)}</b> (${items.length} entr${items.length===1?"y":"ies"}) was downloaded to this device.</p>
+    <p class="small muted" style="margin:0">If nothing was downloaded, tap the button below.</p>
+    <a class="btn primary" id="dlAgain" href="${url}" download="${esc(filename)}">${ICON.dl} Download again</a>
+    ${navigator.canShare?`<button class="btn" id="shareBtn" type="button">Share…</button>`:""}</div>`);
+  const sh=$("#shareBtn"); if(sh) sh.onclick=async()=>{ try{ const file=new File([blob],filename,{type:blob.type}); if(navigator.canShare({files:[file]})) await navigator.share({files:[file],title:filename}); else toast("Sharing files isn't supported on this device."); }catch(e){} };
+}
+function counts(items){ return {total:items.length, open:items.filter(i=>i.status==="Open").length, closed:items.filter(i=>i.status==="Close").length, p1:items.filter(i=>i.priority==="P1").length, p2:items.filter(i=>i.priority!=="P1").length}; }
+const COLS=["S.No","Park name","Zone","Location","Priority","Comment","Concerned person","Before Pic","Date","After Pic","Closed date","Status","Remark"];
+const PHOTO_COLS=[7,9];
+function rowValues(it,i){ return [i+1,it.park,it.zone,it.location,it.priority,it.comment,it.person,"",dmy(it.issue_date),"",dmy(it.closed_date),it.status,it.remark]; }
+
+/* Excel: one photo per row; every other column of the entry is merged across those rows */
+async function buildXlsx(f,items,imgs,logos){
+  const wb=new ExcelJS.Workbook(); wb.creator="Site Walk";
+  const ws=wb.addWorksheet("Site Walk",{pageSetup:{orientation:"landscape",paperSize:9,fitToPage:true,fitToWidth:1,fitToHeight:0,margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}},views:[{showGridLines:false}]});
+  const PHW=30;
+  ws.columns=[{width:6},{width:22},{width:10},{width:24},{width:9},{width:30},{width:16},{width:PHW},{width:12},{width:PHW},{width:12},{width:12},{width:24}];
+  const NAVY="FF003A70"; const bd={style:"thin",color:{argb:"FFB7C3D3"}}; const border={top:bd,left:bd,bottom:bd,right:bd};
+  ws.mergeCells(1,1,1,13); ws.getRow(1).height=80;
+  const t=ws.getCell(1,1); t.value="DM Parks Site Walk Report"; t.font={name:"Arial",bold:true,size:20,color:{argb:NAVY}}; t.alignment={horizontal:"center",vertical:"middle"};
+  const putLogo=(lg,col)=>{ if(!lg) return; const id=wb.addImage({base64:lg.data,extension:"jpeg"}); const fz=fit(lg.w,lg.h,150,90); ws.addImage(id,{tl:{col,row:0.08},ext:{width:fz.w,height:fz.h}}); };
+  putLogo(logos.left,0.1); putLogo(logos.right,12.05);
+  ws.mergeCells(2,1,2,13); const sub=ws.getCell(2,1); sub.value=scopeLabel(f); sub.font={name:"Arial",bold:true,size:11,color:{argb:"FF5A6A80"}}; sub.alignment={horizontal:"center"}; ws.getRow(2).height=20;
+  const hr=ws.getRow(3); COLS.forEach((h,i)=>{ const c=hr.getCell(i+1); c.value=h; c.font={name:"Arial",bold:true,size:12,color:{argb:"FFFFFFFF"}}; c.fill={type:"pattern",pattern:"solid",fgColor:{argb:NAVY}}; c.alignment={horizontal:"center",vertical:"middle",wrapText:true}; c.border=border; }); hr.height=34;
+  const colPx=PHW*7+5, ROWH=150, rowPx=ROWH*4/3;
+  let row=3;
+  items.forEach((it,i)=>{
+    const im=imgs[i]; const n=Math.max(1,im.before.length,im.after.length); const hasPh=im.before.length+im.after.length>0;
+    const r0=row+1, r1=row+n;
+    for(let r=r0;r<=r1;r++){ ws.getRow(r).height=hasPh?ROWH:40; for(let c=1;c<=13;c++){ const cell=ws.getCell(r,c); cell.border=border; } }
+    rowValues(it,i).forEach((v,ci)=>{
+      if(PHOTO_COLS.includes(ci)) return;
+      if(n>1) ws.mergeCells(r0,ci+1,r1,ci+1);
+      const c=ws.getCell(r0,ci+1); c.value=v;
+      c.alignment={horizontal:[0,2,4,8,10,11].includes(ci)?"center":"left",vertical:"middle",wrapText:true};
+      c.font={name:"Arial",size:11,bold:ci===0||ci===1||ci===11,color:{argb: ci===11?(it.status==="Close"?"FF1D7F55":"FFB4380F") : ci===4&&it.priority==="P1"?"FFB4380F":(ci===0||ci===1?NAVY:"FF222222")}};
+      if(ci===11) c.fill={type:"pattern",pattern:"solid",fgColor:{argb:it.status==="Close"?"FFE3F3EA":"FFFCE4E4"}};
+    });
+    [[im.before,7],[im.after,9]].forEach(([list,col])=>{ list.forEach((g,k)=>{
+      const fz=fit(g.w,g.h,colPx-10,rowPx-10);
+      const id=wb.addImage({base64:g.data,extension:"jpeg"});
+      ws.addImage(id,{tl:{col:col+((colPx-fz.w)/2)/colPx,row:(r0-1+k)+((rowPx-fz.h)/2)/rowPx},ext:{width:fz.w,height:fz.h}});
+    }); });
+    row=r1;
+  });
+  const c=counts(items); row+=2;
+  ws.mergeCells(row,1,row,3); const sh=ws.getCell(row,1); sh.value="Summary"; sh.font={name:"Arial",bold:true,size:12,color:{argb:NAVY}};
+  [["Total entries",c.total],["Open",c.open],["Closed",c.closed],["Priority P1",c.p1],["Priority P2",c.p2]].forEach(([l,v])=>{ row++; ws.mergeCells(row,1,row,3);
+    const a=ws.getCell(row,1); a.value=l; a.font={name:"Arial",bold:true,size:10,color:{argb:NAVY}}; a.fill={type:"pattern",pattern:"solid",fgColor:{argb:"FFE6ECF3"}}; a.border=border;
+    const b=ws.getCell(row,4); b.value=v; b.font={name:"Arial",bold:true,size:11,color:{argb:NAVY}}; b.alignment={horizontal:"center"}; b.border=border; });
+  row+=2; ws.mergeCells(row,1,row,6); const p=ws.getCell(row,1); p.value=`Prepared by: ${S.name}${S.settings.orgLine?", "+S.settings.orgLine:""}`; p.font={name:"Arial",bold:true,size:10,color:{argb:NAVY}};
+  ws.pageSetup.printTitlesRow="3:3";
+  const buf=await wb.xlsx.writeBuffer();
+  return new Blob([buf],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+}
+
+/* PDF: same layout, using row spans */
+function buildPdf(f,items,imgs,logos){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"landscape",unit:"pt",format:"a4"});
+  const W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight(), M=24;
+  const NAVY=[0,58,112], GOLD=[200,168,122], INK=[34,34,34], MUTED=[90,106,128], RED=[180,56,15], GREEN=[29,127,85];
+  let y=M;
+  if(logos.left){ const fz=fit(logos.left.w,logos.left.h,110,46); doc.addImage(logos.left.data,"JPEG",M,y,fz.w,fz.h); }
+  if(logos.right){ const fz=fit(logos.right.w,logos.right.h,110,46); doc.addImage(logos.right.data,"JPEG",W-M-fz.w,y,fz.w,fz.h); }
+  doc.setFont("helvetica","bold"); doc.setFontSize(18); doc.setTextColor(...NAVY); doc.text("DM Parks Site Walk Report",W/2,y+18,{align:"center"});
+  y+=30; doc.setDrawColor(...GOLD); doc.setLineWidth(1.5); doc.line(W/2-150,y,W/2+150,y);
+  y+=14; doc.setFontSize(10); doc.setTextColor(...MUTED); doc.text(scopeLabel(f),W/2,y,{align:"center"});
+  y+=14;
+  const c=counts(items); const chips=[["Entries",c.total,NAVY],["Open",c.open,RED],["Closed",c.closed,GREEN],["P1",c.p1,GOLD]];
+  const cw=(W-2*M-30)/4;
+  chips.forEach(([l,v,col],i)=>{ const x=M+i*(cw+10); doc.setFillColor(230,236,243); doc.roundedRect(x,y,cw,30,4,4,"F"); doc.setFillColor(...col); doc.rect(x,y,3,30,"F");
+    doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(14,35,64); doc.text(String(v),x+12,y+20); doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(...MUTED); doc.text(l,x+44,y+19); });
+  y+=40;
+  const body=[], meta=[];
+  items.forEach((it,i)=>{
+    const im=imgs[i]; const n=Math.max(1,im.before.length,im.after.length); const hasPh=im.before.length+im.after.length>0;
+    for(let k=0;k<n;k++){
+      let row;
+      if(k===0) row=rowValues(it,i).map((v,ci)=>PHOTO_COLS.includes(ci)?{content:""}:{content:String(v??""),rowSpan:n});
+      else row=[{content:""},{content:""}];
+      body.push(row); meta.push({i,k,hasPh});
+    }
+  });
+  doc.autoTable({
+    startY:y, margin:{left:M,right:M,bottom:34},
+    head:[COLS], body, theme:"grid",
+    styles:{font:"helvetica",fontSize:7.5,textColor:INK,cellPadding:3,valign:"middle",lineColor:[205,214,226],lineWidth:.5,overflow:"linebreak"},
+    headStyles:{fillColor:NAVY,textColor:255,fontStyle:"bold",halign:"center",fontSize:7.5},
+    columnStyles:{0:{cellWidth:24,halign:"center"},1:{cellWidth:66,fontStyle:"bold",textColor:NAVY},2:{cellWidth:38,halign:"center"},3:{cellWidth:66},4:{cellWidth:32,halign:"center"},5:{cellWidth:"auto"},6:{cellWidth:54},7:{cellWidth:96},8:{cellWidth:44,halign:"center"},9:{cellWidth:96},10:{cellWidth:44,halign:"center"},11:{cellWidth:38,halign:"center",fontStyle:"bold"},12:{cellWidth:60}},
+    didParseCell:d=>{ if(d.section!=="body") return; const mt=meta[d.row.index]; if(!mt) return; const it=items[mt.i];
+      d.cell.styles.minCellHeight=mt.hasPh?80:18;
+      if(d.column.index===11){ d.cell.styles.textColor=it.status==="Close"?GREEN:RED; d.cell.styles.fillColor=it.status==="Close"?[227,243,234]:[252,228,228]; }
+      if(d.column.index===4 && it.priority==="P1") d.cell.styles.textColor=RED; },
+    didDrawCell:d=>{ if(d.section!=="body"||!PHOTO_COLS.includes(d.column.index)) return; const mt=meta[d.row.index]; if(!mt) return;
+      const list=d.column.index===7?imgs[mt.i].before:imgs[mt.i].after; const g=list[mt.k]; if(!g) return;
+      const fz=fit(g.w,g.h,d.cell.width-6,d.cell.height-6); doc.addImage(g.data,"JPEG",d.cell.x+(d.cell.width-fz.w)/2,d.cell.y+(d.cell.height-fz.h)/2,fz.w,fz.h); }
+  });
+  let fy=doc.lastAutoTable.finalY+22; if(fy>H-40){ doc.addPage(); fy=M+20; }
+  doc.setFont("helvetica","bold"); doc.setFontSize(9.5); doc.setTextColor(...NAVY); doc.text(`Prepared by: ${S.name}${S.settings.orgLine?", "+S.settings.orgLine:""}`,M,fy);
+  doc.setFont("helvetica","normal"); doc.text("Signature / Date: ______________________",W-M,fy,{align:"right"});
+  const pages=doc.getNumberOfPages();
+  for(let i=1;i<=pages;i++){ doc.setPage(i); doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.text("Site Walk · "+scopeLabel(f),M,H-14); doc.text(`Page ${i} of ${pages}`,W-M,H-14,{align:"right"}); }
+  return doc.output("blob");
+}
+
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+render(true);
+boot();
 </script>
 </body>
 </html>
