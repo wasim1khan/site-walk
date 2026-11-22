@@ -488,15 +488,24 @@ function viewMain(){
     <div class="tile ok"><b>${closed}</b><span>Closed</span></div>
     <div class="tile sr"><b>${p1}</b><span>Open P1</span></div>
   </div>`;
-  if(!list.length){
-    out+=`<section class="card empty">${ICON.leaf}<h2 style="color:var(--ink)">No entries here</h2><p style="margin:6px auto 0;max-width:46ch">${S.issues.length?"Nothing matches the selected zone, status or search.":"No entries for "+esc(monthLabel(S.month))+" yet. Tap “New entry” to record the first one."}</p></section>`;
+  const searching=!!norm(S.q)||!!S.status;
+  if(!list.length && searching){
+    out+=`<section class="card empty">${ICON.leaf}<h2 style="color:var(--ink)">No entries here</h2><p style="margin:6px auto 0;max-width:46ch">Nothing matches the selected status or search.</p></section>`;
   } else {
     const byZone={}; list.forEach(it=>{ (byZone[it.zone]=byZone[it.zone]||[]).push(it); });
-    Object.keys(byZone).sort().forEach(z=>{
-      const items=byZone[z]; const zo=items.filter(i=>i.status==="Open").length;
+    const allZones=[...new Set([...zones(),...Object.keys(byZone)])].sort();
+    const shown=S.zone?[S.zone]:allZones.filter(z=>!searching||byZone[z]);
+    shown.forEach(z=>{
+      const items=byZone[z]||[]; const zo=items.filter(i=>i.status==="Open").length;
+      const parksInZone=S.parks.filter(p=>p.zone===z).length;
+      if(!items.length){
+        out+=`<details class="card zone"><summary class="zone-head"><h2>${esc(z)}</h2><span class="pill pending">No entries</span><span style="flex:1"></span><span class="small muted">${parksInZone} park${parksInZone===1?"":"s"}</span></summary>
+          <p class="muted small" style="margin:0">No entries in ${esc(z)} for ${esc(monthLabel(S.month))}. Tap “New entry” to add one.</p></details>`;
+        return;
+      }
       const byPark={}; items.forEach(it=>{ (byPark[it.park]=byPark[it.park]||[]).push(it); });
       out+=`<details class="card zone" open><summary class="zone-head"><h2>${esc(z)}</h2><span class="pill open">${zo} open</span><span class="pill close">${items.length-zo} closed</span><span style="flex:1"></span>
-        <span class="small muted">${Object.keys(byPark).length} park${Object.keys(byPark).length===1?"":"s"}</span></summary>
+        <span class="small muted">${Object.keys(byPark).length} of ${parksInZone} parks</span></summary>
         ${Object.keys(byPark).sort().map(p=>{ const pk=parkOf(p); return `<div><div class="park-name">${esc(p)} <span class="small muted" style="font-weight:500">${byPark[p].length}</span>${pk&&pk.map_url?`<a href="${esc(pk.map_url)}" target="_blank" rel="noopener">${ICON.pin} Map</a>`:""}</div>
           <div class="issues">${byPark[p].map(issueCard).join("")}</div></div>`; }).join("")}
       </details>`;

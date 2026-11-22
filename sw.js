@@ -1,6 +1,6 @@
 // Site Walk service worker: keeps the app files so the app opens quickly.
 // Reports and photos always load live from Supabase.
-const CACHE = "site-walk-sb-v1";
+const CACHE = "site-walk-sb-v2";
 const SHELL = ["./", "index.html", "config.js", "manifest.json", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "apple-touch-icon.png", "favicon.png", "logo-full.png"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
